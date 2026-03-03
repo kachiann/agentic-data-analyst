@@ -23,10 +23,20 @@ def run_workflow(user_goal: str, csv_path: str):
     for step in plan.steps:
         if step.tool not in ALLOWED_TOOLS:
             continue
-        fn = getattr(tools, step.tool)
-        tr = fn(**step.args)
-        results.append(tr.__dict__)
 
+        fn = getattr(tools, step.tool)
+
+        tool_args = {}
+
+        # Only extract args if they exist and are a Pydantic model
+        if hasattr(step.args, step.tool):
+            tool_args_obj = getattr(step.args, step.tool)
+
+            if tool_args_obj is not None and hasattr(tool_args_obj, "model_dump"):
+                tool_args = tool_args_obj.model_dump()
+
+        tr = fn(**tool_args)
+        results.append(tr.__dict__)
     # Report
     report = generate_report(user_goal, results)
 
